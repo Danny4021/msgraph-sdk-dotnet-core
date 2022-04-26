@@ -38,17 +38,11 @@ namespace Microsoft.Graph
         /// <returns></returns>
         public override T Read(ref Utf8JsonReader reader, Type objectType, JsonSerializerOptions options)
         {
-            JsonDocument jsonDocument = JsonDocument.ParseValue(ref reader);
+            using JsonDocument jsonDocument = JsonDocument.ParseValue(ref reader);
             JsonElement type;
-            try
-            {
-                // try to get the @odata.type property if we can
-                if (!jsonDocument.RootElement.TryGetProperty(CoreConstants.Serialization.ODataType, out type))
-                {
-                    type = default;
-                }
-            }
-            catch (InvalidOperationException)
+
+            // try to get the @odata.type property if we can
+            if (jsonDocument.RootElement.ValueKind != JsonValueKind.Object || !jsonDocument.RootElement.TryGetProperty(CoreConstants.Serialization.ODataType, out type))
             {
                 type = default;
             }
@@ -143,7 +137,7 @@ namespace Microsoft.Graph
                         try
                         {
                             // Deserialize the property in and update the current object.
-                            var parsedValue = JsonSerializer.Deserialize(property.Value.GetRawText(), propertyInfo.PropertyType, options);
+                            var parsedValue = property.Value.Deserialize(propertyInfo.PropertyType, options);
                             propertyInfo.SetValue(target, parsedValue);
                         }
                         catch (JsonException)
@@ -167,7 +161,7 @@ namespace Microsoft.Graph
                         foreach (var property in json.EnumerateArray())
                         {
                             // Get the object instance
-                            var instance = JsonSerializer.Deserialize(property.GetRawText(), genericType, options);
+                            var instance = property.Deserialize(genericType, options);
 
                             // Invoke the insert function to add it to the collection as it an IList
                             MethodInfo methodInfo = collectionPropertyInfo.PropertyType.GetMethods().FirstOrDefault(method => method.Name.Equals("Insert"));
@@ -199,7 +193,7 @@ namespace Microsoft.Graph
             if (additionalDataInfo != null)
             {
                 var additionalData = additionalDataInfo.GetValue(target) as IDictionary<string, object> ?? new Dictionary<string, object>();
-                additionalData.Add(property.Name, property.Value);
+                additionalData.Add(property.Name, property.Value.Clone());
                 additionalDataInfo.SetValue(target, additionalData);
             }
         }
