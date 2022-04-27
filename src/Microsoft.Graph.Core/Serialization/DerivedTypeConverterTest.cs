@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------------
 //  Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the MIT License.  See License in the project root for license information.
 // ------------------------------------------------------------------------------
 
@@ -15,7 +15,7 @@ namespace Microsoft.Graph
     /// <summary>
     /// Handles resolving interfaces to the correct derived class during serialization/deserialization.
     /// </summary>
-    public class DerivedTypeConverter<T> : JsonConverter<T> where T : class
+    public class DerivedTypeConverterTest<T> : JsonConverter<T> where T : class
     {
         internal static readonly ConcurrentDictionary<string, Type> TypeMappingCache = new ConcurrentDictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
 
@@ -26,7 +26,7 @@ namespace Microsoft.Graph
         /// <returns>True</returns>
         public override bool CanConvert(Type objectType)
         {
-            return objectType.IsAssignableFrom(typeof(T));
+            return objectType.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Text.Json.Serialization.JsonConverterAttribute") && typeof(T).IsAssignableFrom(objectType);
         }
 
         /// <summary>
@@ -122,65 +122,65 @@ namespace Microsoft.Graph
             switch (json.ValueKind)
             {
                 case JsonValueKind.Object:
-                {
-                    // iterate through the object properties
-                    foreach (var property in json.EnumerateObject())
                     {
-                        // look up the property in the object definition using the mapping provided in the model attribute
-                        var propertyInfo = objectType.GetProperties().FirstOrDefault((mappedProperty) =>
+                        // iterate through the object properties
+                        foreach (var property in json.EnumerateObject())
                         {
-                            var attribute = mappedProperty.GetCustomAttribute<JsonPropertyNameAttribute>();
-                            return attribute?.Name == property.Name;
-                        });
-                        if (propertyInfo == null)
-                        {
-                            //Add the property to AdditionalData as it doesn't exist as a member of the object
-                            AddToAdditionalDataBag(target, objectType, property);
-                            continue;
-                        }
-
-                        try
-                        {
-                            // Deserialize the property in and update the current object.
-                            var parsedValue = property.Value.Deserialize(propertyInfo.PropertyType, options);
-                            propertyInfo.SetValue(target, parsedValue);
-                        }
-                        catch (JsonException)
-                        {
-                            //Add the property to AdditionalData as it can't be deserialized as a member. Eg. non existing enum member type
-                            AddToAdditionalDataBag(target, objectType, property);
-                        }
-                    }
-
-                    break;
-                }
-                case JsonValueKind.Array:
-                {
-                    //Its most likely a collectionPage instance so get its CurrentPage property
-                    var collectionPropertyInfo = objectType.GetProperty("CurrentPage", BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-                    if (collectionPropertyInfo != null)
-                    {
-                        // Get the generic type info for deserialization
-                        Type genericType = collectionPropertyInfo.PropertyType.GenericTypeArguments.FirstOrDefault();
-                        int index = 0;
-                        foreach (var property in json.EnumerateArray())
-                        {
-                            // Get the object instance
-                            var instance = property.Deserialize(genericType, options);
-
-                            // Invoke the insert function to add it to the collection as it an IList
-                            MethodInfo methodInfo = collectionPropertyInfo.PropertyType.GetMethods().FirstOrDefault(method => method.Name.Equals("Insert"));
-                            object[] parameters = new object[] { index, instance };
-                            if (methodInfo != null)
+                            // look up the property in the object definition using the mapping provided in the model attribute
+                            var propertyInfo = objectType.GetProperties().FirstOrDefault((mappedProperty) =>
                             {
-                                methodInfo.Invoke(target, parameters);//insert the object to the page List
-                                index++;
+                                var attribute = mappedProperty.GetCustomAttribute<JsonPropertyNameAttribute>();
+                                return attribute?.Name == property.Name;
+                            });
+                            if (propertyInfo == null)
+                            {
+                                //Add the property to AdditionalData as it doesn't exist as a member of the object
+                                AddToAdditionalDataBag(target, objectType, property);
+                                continue;
+                            }
+
+                            try
+                            {
+                                // Deserialize the property in and update the current object.
+                                var parsedValue = property.Value.Deserialize(propertyInfo.PropertyType, options);
+                                propertyInfo.SetValue(target, parsedValue);
+                            }
+                            catch (JsonException)
+                            {
+                                //Add the property to AdditionalData as it can't be deserialized as a member. Eg. non existing enum member type
+                                AddToAdditionalDataBag(target, objectType, property);
                             }
                         }
-                    }
 
-                    break;
-                }
+                        break;
+                    }
+                case JsonValueKind.Array:
+                    {
+                        //Its most likely a collectionPage instance so get its CurrentPage property
+                        var collectionPropertyInfo = objectType.GetProperty("CurrentPage", BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                        if (collectionPropertyInfo != null)
+                        {
+                            // Get the generic type info for deserialization
+                            Type genericType = collectionPropertyInfo.PropertyType.GenericTypeArguments.FirstOrDefault();
+                            int index = 0;
+                            foreach (var property in json.EnumerateArray())
+                            {
+                                // Get the object instance
+                                var instance = property.Deserialize(genericType, options);
+
+                                // Invoke the insert function to add it to the collection as it an IList
+                                MethodInfo methodInfo = collectionPropertyInfo.PropertyType.GetMethods().FirstOrDefault(method => method.Name.Equals("Insert"));
+                                object[] parameters = new object[] { index, instance };
+                                if (methodInfo != null)
+                                {
+                                    methodInfo.Invoke(target, parameters);//insert the object to the page List
+                                    index++;
+                                }
+                            }
+                        }
+
+                        break;
+                    }
             }
         }
 
@@ -194,7 +194,7 @@ namespace Microsoft.Graph
         private void AddToAdditionalDataBag(object target, Type objectType, JsonProperty property)
         {
             // Get the property with the JsonExtensionData attribute and add the property to the collection
-            var additionalDataInfo = objectType.GetProperties().FirstOrDefault(propertyInfo => ((MemberInfo) propertyInfo).GetCustomAttribute<JsonExtensionDataAttribute>() != null);
+            var additionalDataInfo = objectType.GetProperties().FirstOrDefault(propertyInfo => ((MemberInfo)propertyInfo).GetCustomAttribute<JsonExtensionDataAttribute>() != null);
             if (additionalDataInfo != null)
             {
                 var additionalData = additionalDataInfo.GetValue(target) as IDictionary<string, object> ?? new Dictionary<string, object>();
@@ -215,7 +215,7 @@ namespace Microsoft.Graph
             foreach (var propertyInfo in value.GetType().GetProperties())
             {
                 var ignoreConverterAttribute = propertyInfo.GetCustomAttribute<System.Text.Json.Serialization.JsonIgnoreAttribute>();
-                if(ignoreConverterAttribute != null)
+                if (ignoreConverterAttribute != null)
                 {
                     continue;// Don't serialize a property we are asked to ignore
                 }
@@ -257,7 +257,7 @@ namespace Microsoft.Graph
                 {
                     // Check to see if the property has a special converter specified
                     var jsonConverter = propertyInfo.GetCustomAttribute<System.Text.Json.Serialization.JsonConverterAttribute>();
-                    if ((propertyInfo.GetValue(value) == null && 
+                    if ((propertyInfo.GetValue(value) == null &&
                          (jsonConverter == null || jsonConverter.ConverterType == typeof(NextLinkConverter))))
                     {
                         continue; //Don't emit null values unless we have a special converter. Unless its a converter for a primitive like the NextLinkConverter
@@ -304,7 +304,7 @@ namespace Microsoft.Graph
                     return null;
                 }
 
-                return constructorInfo.Invoke( new object[] { } );
+                return constructorInfo.Invoke(new object[] { });
             }
             catch (Exception exception)
             {

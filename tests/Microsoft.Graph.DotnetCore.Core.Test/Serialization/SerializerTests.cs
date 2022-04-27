@@ -15,6 +15,7 @@ namespace Microsoft.Graph.DotnetCore.Core.Test.Serialization
     using System.Net.Http;
     using System.Text;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
     using Xunit;
     public class SerializerTests
     {
@@ -46,6 +47,10 @@ namespace Microsoft.Graph.DotnetCore.Core.Test.Serialization
                 "{{\"id\":\"{0}\", \"@odata.type\":\"#microsoft.graph.dotnetCore.core.test.testModels.derivedTypeClass\", \"name\":\"{1}\"}}",
                 id,
                 name);
+
+            var jsonSerializerOptions = new JsonSerializerOptions();
+            jsonSerializerOptions.Converters.Add(new DerivedTypeConverterTest<object>());
+            this.serializer = new Serializer(jsonSerializerOptions);
 
             var derivedType = this.serializer.DeserializeObject<DerivedTypeClass>(stringToDeserialize);
 
