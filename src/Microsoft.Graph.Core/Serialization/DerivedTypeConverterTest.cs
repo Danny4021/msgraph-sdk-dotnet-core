@@ -57,7 +57,7 @@ namespace Microsoft.Graph
                 // Use the type assembly as part of the key since users might use v1 and beta at the same causing conflicts
                 var typeMappingCacheKey = $"{typeAssembly.FullName} : {typeString}";
 
-                if (DerivedTypeConverter<T>.TypeMappingCache.TryGetValue(typeMappingCacheKey, out var instanceType))
+                if (DerivedTypeConverterTest<T>.TypeMappingCache.TryGetValue(typeMappingCacheKey, out var instanceType))
                 {
                     instance = this.Create(instanceType);
                 }
@@ -78,7 +78,7 @@ namespace Microsoft.Graph
                 if (instance != null && instanceType == null)
                 {
                     // Cache the type mapping resolution if we haven't pulled it from the cache already.
-                    DerivedTypeConverter<T>.TypeMappingCache.TryAdd(typeMappingCacheKey, instance.GetType());
+                    DerivedTypeConverterTest<T>.TypeMappingCache.TryAdd(typeMappingCacheKey, instance.GetType());
                 }
             }
             else
@@ -96,10 +96,8 @@ namespace Microsoft.Graph
                 throw new ServiceException(
                     new Error
                     {
-                        Code = ErrorConstants.Codes.GeneralException,
-                        Message = string.Format(
-                            ErrorConstants.Messages.UnableToCreateInstanceOfTypeFormatString,
-                            objectType.AssemblyQualifiedName),
+                        Code = "General Exception",
+                        Message = string.Format($"Unable to create instance of type { objectType.AssemblyQualifiedName}")
                     });
             }
 
@@ -311,8 +309,8 @@ namespace Microsoft.Graph
                 throw new ServiceException(
                     new Error
                     {
-                        Code = ErrorConstants.Codes.GeneralException,
-                        Message = string.Format(ErrorConstants.Messages.UnableToCreateInstanceOfTypeFormatString, type.FullName),
+                        Code = "General Exception",
+                        Message = $"Unable to create instance of type { type.FullName}",
                     },
                     exception);
             }
