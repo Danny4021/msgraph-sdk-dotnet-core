@@ -100,7 +100,7 @@ steps:
 - task: EsrpCodeSigning@2
   displayName: 'ESRP DLL Strong Name (Microsoft.Graph.Core)'
   inputs:
-    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet (AKV)'
+    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet - test'
     FolderPath: src/Microsoft.Graph.Core/bin/release
     Pattern: '**\*Microsoft.Graph.Core.dll'
     signConfigType: inlineSignParams
@@ -127,7 +127,7 @@ steps:
 - task: EsrpCodeSigning@2
   displayName: 'ESRP DLL CodeSigning (Microsoft.Graph.Core)'
   inputs:
-    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet (AKV)'
+    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet - test'
     FolderPath: src/Microsoft.Graph.Core/bin/release
     Pattern: '**\*Microsoft.Graph.Core.dll'
     UseMinimatch: true
@@ -180,7 +180,7 @@ steps:
 - task: EsrpCodeSigning@2
   displayName: 'ESRP NuGet CodeSigning'
   inputs:
-    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet (AKV)'
+    ConnectedServiceName: 'microsoftgraph ESRP CodeSign DLL and NuGet - test'
     FolderPath: '$(Build.ArtifactStagingDirectory)'
     UseMinimatch: true
     Pattern: '*nupkg'
